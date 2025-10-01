@@ -32,33 +32,48 @@ class FirebaseService: ObservableObject {
             
             // Compress image for Firestore storage with progressive compression
             var compressionQuality: CGFloat = 0.8
-            var imageData = resizedImage.jpegData(compressionQuality: compressionQuality)
+            let imageData = resizedImage.jpegData(compressionQuality: compressionQuality)
             
             guard var data = imageData else {
                 throw FirebaseError.imageCompressionFailed
             }
             
             // Progressive compression to fit within limits
-            while Double(data.count) / (1024 * 1024) > 0.9 && compressionQuality > 0.1 {
-                compressionQuality -= 0.1
+            // Account for Base64 encoding overhead (33% increase) and metadata
+            let maxRawSize = 700_000 // 700KB to account for Base64 + metadata
+            
+            while data.count > maxRawSize && compressionQuality > 0.05 {
+                compressionQuality -= 0.05
                 guard let compressedData = resizedImage.jpegData(compressionQuality: compressionQuality) else {
                     throw FirebaseError.imageCompressionFailed
                 }
                 data = compressedData
             }
             
-            // Final size check
-            let imageSizeInMB = Double(data.count) / (1024 * 1024)
-            if imageSizeInMB > 0.9 { // Leave room for other fields
+            // Final size check with Base64 overhead calculation
+            let base64Size = (data.count * 4) / 3 // Base64 encoding adds ~33%
+            let estimatedDocumentSize = base64Size + 1000 // Add buffer for metadata
+            
+            if estimatedDocumentSize > 1_000_000 { // 1MB Firestore limit
                 throw FirebaseError.imageTooLarge
             }
             
             // Convert to Base64
             let base64Image = data.base64EncodedString()
             
-            // Create thumbnail (very compressed)
+            // Debug logging
+            print("📊 Image Upload Debug:")
+            print("   Original size: \(image.size)")
+            print("   Resized to: \(resizedImage.size)")
+            print("   Compressed data: \(data.count) bytes")
+            print("   Base64 size: \(base64Image.count) bytes")
+            print("   Compression quality: \(compressionQuality)")
+            
+            // Create thumbnail (very compressed and small)
             var base64Thumbnail: String?
-            if let thumbnailData = image.jpegData(compressionQuality: 0.2) {
+            let thumbnailSize: CGFloat = 200 // Small thumbnail
+            let thumbnailImage = resizeImageIfNeeded(resizedImage, maxSize: thumbnailSize)
+            if let thumbnailData = thumbnailImage.jpegData(compressionQuality: 0.1) {
                 base64Thumbnail = thumbnailData.base64EncodedString()
             }
             
