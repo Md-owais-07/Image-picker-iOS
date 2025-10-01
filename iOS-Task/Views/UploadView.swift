@@ -63,8 +63,8 @@ struct UploadView: View {
                 }) {
                     VStack(spacing: 15) {
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
-                            .frame(height: 120)
+                            .stroke(Color.green.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [12, 6]))
+                            .frame(height: 150)
                             .overlay(
                                 VStack(spacing: 8) {
                                     Image(systemName: "photo.on.rectangle")
@@ -102,24 +102,24 @@ struct UploadView: View {
                 }) {
                     VStack(spacing: 15) {
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.gray.opacity(0.5), style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
-                            .frame(height: 120)
+                            .stroke(Color.green.opacity(0.5), style: StrokeStyle(lineWidth: 1.5, dash: [12, 6]))
+                            .frame(height: 55)
                             .overlay(
-                                VStack(spacing: 8) {
-                                    Image(systemName: "camera")
-                                        .font(.system(size: 40))
+                                HStack(spacing: 10) {
+                                    Image(systemName: "camera.fill")
+                                        .font(.system(size: 18))
                                         .foregroundColor(.green)
                                     
                                     Text("Open camera")
-                                        .font(.system(size: 16, weight: .medium))
-                                        .foregroundColor(.primary)
+                                        .font(.system(size: 16, weight: .regular))
+                                        .foregroundColor(.primary.opacity(0.6))
                                 }
                             )
                     }
                 }
                 .buttonStyle(PlainButtonStyle())
             }
-            .padding(.horizontal, 40)
+            .padding(.horizontal, 20)
             
             Spacer()
         }
@@ -165,6 +165,7 @@ struct UploadView: View {
             VStack(spacing: 20) {
                 TextField("Reference Name", text: $referenceName)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .frame(height: 42)
                     .padding(.horizontal, 40)
                 
                 Button(action: {
@@ -173,8 +174,8 @@ struct UploadView: View {
                     Text("Submit")
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 50)
+                        .frame(height: 45)
+                        .padding(.horizontal, 30)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
                                 .fill(referenceName.isEmpty ? Color.gray : Color.green)

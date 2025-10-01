@@ -78,9 +78,9 @@ struct MainTabView: View {
         .background(
             Rectangle()
                 .fill(Color(.systemBackground))
-                .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: -1)
+                .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: -1)
         )
-        .frame(height: 35)
+        .frame(height: 10)
     }
 }
 
