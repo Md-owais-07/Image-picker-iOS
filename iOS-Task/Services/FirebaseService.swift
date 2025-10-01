@@ -12,6 +12,8 @@ internal import Combine
 
 @MainActor
 class FirebaseService: ObservableObject {
+    static let shared = FirebaseService()
+    
     private let db = Firestore.firestore()
     
     @Published var images: [ImageModel] = []
@@ -20,6 +22,7 @@ class FirebaseService: ObservableObject {
     
     private var lastDocument: DocumentSnapshot?
     private var hasMoreImages = true
+    private var hasInitiallyLoaded = false
     
     // MARK: - Upload Image
     func uploadImage(_ image: UIImage, referenceName: String) async throws {
@@ -125,6 +128,7 @@ class FirebaseService: ObservableObject {
             
             if refresh {
                 images = newImages
+                hasInitiallyLoaded = true
             } else {
                 images.append(contentsOf: newImages)
             }
@@ -137,6 +141,12 @@ class FirebaseService: ObservableObject {
             isLoading = false
             errorMessage = error.localizedDescription
         }
+    }
+    
+    // MARK: - Initial Load (only if not loaded before)
+    func loadImagesIfNeeded() async {
+        guard !hasInitiallyLoaded && !isLoading else { return }
+        await fetchImages(refresh: true)
     }
     
     // MARK: - Load More Images

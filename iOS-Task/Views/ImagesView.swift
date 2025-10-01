@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct ImagesView: View {
-    @StateObject private var firebaseService = FirebaseService()
+    @ObservedObject private var firebaseService = FirebaseService.shared
     @State private var showingRefreshAlert = false
     
     private let columns = [
@@ -36,7 +36,6 @@ struct ImagesView: View {
                                         }
                                 }
                             }
-                            .padding(.horizontal, 16)
                             .padding(.top, 16)
                             
                             // Loading indicator for pagination
@@ -49,11 +48,6 @@ struct ImagesView: View {
                             await firebaseService.fetchImages(refresh: true)
                         }
                     }
-                    
-                    // Tab Bar Placeholder (will be handled by parent)
-                    Rectangle()
-                        .fill(Color.clear)
-                        .frame(height: 83)
                 }
                 
                 // Centered Empty State
@@ -93,10 +87,8 @@ struct ImagesView: View {
             .navigationBarHidden(true)
         }
         .task {
-            // Load images when view appears
-            if firebaseService.images.isEmpty {
-                await firebaseService.fetchImages(refresh: true)
-            }
+            // Only load images if not loaded before
+            await firebaseService.loadImagesIfNeeded()
         }
         .alert("Error", isPresented: .constant(firebaseService.errorMessage != nil)) {
             Button("OK") {
