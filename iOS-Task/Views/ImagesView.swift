@@ -18,36 +18,45 @@ struct ImagesView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Images Grid
-                ScrollView {
-                    LazyVGrid(columns: columns, spacing: 16) {
-                        ForEach(firebaseService.images) { image in
-                            ImageGridItem(imageModel: image)
-                                .onAppear {
-                                    // Load more images when reaching the end
-                                    if image.id == firebaseService.images.last?.id {
-                                        Task {
-                                            await firebaseService.loadMoreImages()
+            ZStack {
+                VStack(spacing: 0) {
+                    // Images Grid - Only show when there are images
+                    if !firebaseService.images.isEmpty {
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 16) {
+                                ForEach(firebaseService.images) { image in
+                                    ImageGridItem(imageModel: image)
+                                        .onAppear {
+                                            // Load more images when reaching the end
+                                            if image.id == firebaseService.images.last?.id {
+                                                Task {
+                                                    await firebaseService.loadMoreImages()
+                                                }
+                                            }
                                         }
-                                    }
                                 }
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.top, 16)
+                            
+                            // Loading indicator for pagination
+                            if firebaseService.isLoading && !firebaseService.images.isEmpty {
+                                ProgressView()
+                                    .padding(.vertical, 20)
+                            }
+                        }
+                        .refreshable {
+                            await firebaseService.fetchImages(refresh: true)
                         }
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
                     
-                    // Loading indicator
-                    if firebaseService.isLoading && !firebaseService.images.isEmpty {
-                        ProgressView()
-                            .padding(.vertical, 20)
-                    }
-                }
-                .refreshable {
-                    await firebaseService.fetchImages(refresh: true)
+                    // Tab Bar Placeholder (will be handled by parent)
+                    Rectangle()
+                        .fill(Color.clear)
+                        .frame(height: 83)
                 }
                 
-                // Empty state
+                // Centered Empty State
                 if firebaseService.images.isEmpty && !firebaseService.isLoading {
                     VStack(spacing: 16) {
                         Image(systemName: "photo.on.rectangle.angled")
@@ -64,9 +73,10 @@ struct ImagesView: View {
                             .multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
                 }
                 
-                // Initial loading
+                // Centered Initial Loading
                 if firebaseService.images.isEmpty && firebaseService.isLoading {
                     VStack(spacing: 16) {
                         ProgressView()
@@ -77,12 +87,8 @@ struct ImagesView: View {
                             .foregroundColor(.gray)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(Color(.systemBackground))
                 }
-                
-                // Tab Bar Placeholder (will be handled by parent)
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(height: 83)
             }
             .navigationBarHidden(true)
         }
