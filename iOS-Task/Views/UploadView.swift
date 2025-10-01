@@ -130,43 +130,47 @@ struct UploadView: View {
     private var imagePreviewView: some View {
         VStack(spacing: 0) {
             // Close Button
-            HStack {
-                Spacer()
-                Button(action: {
-                    showingImagePreview = false
-                    selectedImage = nil
-                    referenceName = ""
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 18, weight: .medium))
-                        .foregroundColor(.white)
-                        .frame(width: 30, height: 30)
-                        .background(Color.red)
-                        .clipShape(Circle())
-                }
-                .padding(.trailing, 20)
-                .padding(.top, 20)
-            }
-            
-            // Image Preview
-            if let selectedImage = selectedImage {
-                Image(uiImage: selectedImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxHeight: 400)
-                    .cornerRadius(12)
-                    .padding(.horizontal, 20)
+            ZStack {
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        showingImagePreview = false
+                        selectedImage = nil
+                        referenceName = ""
+                    }) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 18, weight: .medium))
+                            .foregroundColor(.white)
+                            .frame(width: 30, height: 30)
+                            .background(Color.red)
+                            .clipShape(Circle())
+                    }
+                    .padding(.trailing, 20)
                     .padding(.top, 20)
+                }
+                
+                // Image Preview
+                if let selectedImage = selectedImage {
+                    Image(uiImage: selectedImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                }
             }
             
             Spacer()
             
             // Reference Name Input and Submit
-            VStack(spacing: 20) {
+            VStack(spacing: 30) {
                 TextField("Reference Name", text: $referenceName)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .padding(.horizontal, 16)
                     .frame(height: 42)
-                    .padding(.horizontal, 40)
+                    .background(Color(.systemBackground))
+                    .cornerRadius(8)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.black, lineWidth: 0.5)
+                    )
+                    .padding(.horizontal, 30)
                 
                 Button(action: {
                     submitImage()
@@ -182,14 +186,14 @@ struct UploadView: View {
                         )
                 }
                 .disabled(referenceName.isEmpty || firebaseService.isLoading)
-                .padding(.horizontal, 40)
+                .padding(.horizontal, 20)
                 
                 if firebaseService.isLoading {
                     ProgressView("Uploading...")
                         .padding(.top, 10)
                 }
             }
-            .padding(.bottom, 40)
+            .padding(.bottom, 0)
         }
         .background(Color(.systemBackground))
     }
