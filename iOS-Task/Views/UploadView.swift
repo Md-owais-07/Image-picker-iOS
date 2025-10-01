@@ -129,38 +129,39 @@ struct UploadView: View {
     // MARK: - Image Preview View
     private var imagePreviewView: some View {
         VStack(spacing: 0) {
-            // Close Button
-            ZStack {
-                HStack {
-                    Spacer()
-                    Button(action: {
-                        showingImagePreview = false
-                        selectedImage = nil
-                        referenceName = ""
-                    }) {
-                        Image(systemName: "xmark")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundColor(.white)
-                            .frame(width: 30, height: 30)
-                            .background(Color.red)
-                            .clipShape(Circle())
-                    }
-                    .padding(.trailing, 20)
-                    .padding(.top, 20)
-                }
-                
-                // Image Preview
-                if let selectedImage = selectedImage {
+            // Image Preview Area - Dynamic size from top to text field
+            if let selectedImage = selectedImage {
+                GeometryReader { geometry in
                     Image(uiImage: selectedImage)
                         .resizable()
                         .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .clipped()
+                        .overlay(
+                            // Close Button with absolute positioning - Always visible
+                            Button(action: {
+                                showingImagePreview = false
+                                self.selectedImage = nil
+                                referenceName = ""
+                            }) {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(.white)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.red)
+                                    .clipShape(Circle())
+                                    .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: 1)
+                            }
+                            .position(
+                                x: geometry.size.width - 35,
+                                y: 35
+                            )
+                        )
                 }
             }
             
-            Spacer()
-            
-            // Reference Name Input and Submit
-            VStack(spacing: 30) {
+            // Reference Name Input and Submit - Fixed at bottom with 20px spacing
+            VStack(spacing: 20) {
                 TextField("Reference Name", text: $referenceName)
                     .padding(.horizontal, 16)
                     .frame(height: 42)
@@ -193,9 +194,10 @@ struct UploadView: View {
                         .padding(.top, 10)
                 }
             }
+            .padding(.top, 20)
             .padding(.bottom, 0)
+            .background(Color(.systemBackground))
         }
-        .background(Color(.systemBackground))
     }
     
     // MARK: - Helper Methods
