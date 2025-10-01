@@ -70,7 +70,7 @@ struct MainTabView: View {
                             .foregroundColor(selectedTab == tab ? .green : .gray)
                     }
                     .frame(maxWidth: .infinity)
-                    .frame(height: 60)
+                    .frame(height: 70)
                 }
                 .buttonStyle(PlainButtonStyle())
             }
@@ -80,7 +80,7 @@ struct MainTabView: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.1), radius: 1, x: 0, y: -1)
         )
-        .frame(height: 83)
+        .frame(height: 35)
     }
 }
 

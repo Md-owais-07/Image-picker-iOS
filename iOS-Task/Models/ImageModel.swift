@@ -11,14 +11,14 @@ import FirebaseFirestore
 struct ImageModel: Identifiable, Codable {
     @DocumentID var id: String?
     let referenceName: String
-    let imageURL: String
+    let imageData: String // Base64 encoded image
+    let thumbnailData: String? // Base64 encoded thumbnail
     let uploadDate: Date
-    let thumbnailURL: String?
     
-    init(referenceName: String, imageURL: String, thumbnailURL: String? = nil) {
+    init(referenceName: String, imageData: String, thumbnailData: String? = nil) {
         self.referenceName = referenceName
-        self.imageURL = imageURL
-        self.thumbnailURL = thumbnailURL
+        self.imageData = imageData
+        self.thumbnailData = thumbnailData
         self.uploadDate = Date()
     }
 }

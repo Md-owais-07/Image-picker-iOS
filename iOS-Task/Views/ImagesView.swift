@@ -107,37 +107,31 @@ struct ImagesView: View {
 // MARK: - Image Grid Item
 struct ImageGridItem: View {
     let imageModel: ImageModel
-    @State private var isLoading = true
+    @State private var displayImage: UIImage?
     
     var body: some View {
         VStack(spacing: 8) {
             // Image
-            AsyncImage(url: URL(string: imageModel.thumbnailURL ?? imageModel.imageURL)) { image in
-                image
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 160, height: 120)
-                    .clipped()
-                    .cornerRadius(12)
-                    .onAppear {
-                        isLoading = false
-                    }
-            } placeholder: {
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.gray.opacity(0.2))
-                    .frame(width: 160, height: 120)
-                    .overlay(
-                        Group {
-                            if isLoading {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            } else {
-                                Image(systemName: "photo")
-                                    .font(.system(size: 30))
-                                    .foregroundColor(.gray.opacity(0.6))
-                            }
-                        }
-                    )
+            Group {
+                if let displayImage = displayImage {
+                    Image(uiImage: displayImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 160, height: 120)
+                        .clipped()
+                        .cornerRadius(12)
+                } else {
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.2))
+                        .frame(width: 160, height: 120)
+                        .overlay(
+                            ProgressView()
+                                .scaleEffect(0.8)
+                        )
+                }
+            }
+            .onAppear {
+                loadImageFromBase64()
             }
             
             // Reference Name
@@ -149,6 +143,18 @@ struct ImageGridItem: View {
                 .frame(width: 160)
         }
         .background(Color(.systemBackground))
+    }
+    
+    private func loadImageFromBase64() {
+        // Use thumbnail if available, otherwise use full image
+        let base64String = imageModel.thumbnailData ?? imageModel.imageData
+        
+        guard let imageData = Data(base64Encoded: base64String),
+              let uiImage = UIImage(data: imageData) else {
+            return
+        }
+        
+        displayImage = uiImage
     }
 }
 

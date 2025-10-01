@@ -7,14 +7,12 @@
 
 import Foundation
 import FirebaseFirestore
-import FirebaseStorage
 import UIKit
 internal import Combine
 
 @MainActor
 class FirebaseService: ObservableObject {
     private let db = Firestore.firestore()
-    private let storage = Storage.storage()
     
     @Published var images: [ImageModel] = []
     @Published var isLoading = false
@@ -29,41 +27,49 @@ class FirebaseService: ObservableObject {
         errorMessage = nil
         
         do {
-            // Compress image
-            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+            // Resize image if too large (max 1200x1200 for better compression)
+            let resizedImage = resizeImageIfNeeded(image, maxSize: 1200)
+            
+            // Compress image for Firestore storage with progressive compression
+            var compressionQuality: CGFloat = 0.8
+            var imageData = resizedImage.jpegData(compressionQuality: compressionQuality)
+            
+            guard var data = imageData else {
                 throw FirebaseError.imageCompressionFailed
             }
             
-            // Create unique filename
-            let filename = "\(UUID().uuidString).jpg"
-            let storageRef = storage.reference().child("images/\(filename)")
-            
-            // Upload image to Firebase Storage
-            let metadata = StorageMetadata()
-            metadata.contentType = "image/jpeg"
-            
-            let _ = try await storageRef.putDataAsync(imageData, metadata: metadata)
-            
-            // Get download URL
-            let downloadURL = try await storageRef.downloadURL()
-            
-            // Create thumbnail (optional - for better performance)
-            let thumbnailData = image.jpegData(compressionQuality: 0.3)
-            var thumbnailURL: String?
-            
-            if let thumbnailData = thumbnailData {
-                let thumbnailRef = storage.reference().child("thumbnails/thumb_\(filename)")
-                let _ = try await thumbnailRef.putDataAsync(thumbnailData, metadata: metadata)
-                thumbnailURL = try await thumbnailRef.downloadURL().absoluteString
+            // Progressive compression to fit within limits
+            while Double(data.count) / (1024 * 1024) > 0.9 && compressionQuality > 0.1 {
+                compressionQuality -= 0.1
+                guard let compressedData = resizedImage.jpegData(compressionQuality: compressionQuality) else {
+                    throw FirebaseError.imageCompressionFailed
+                }
+                data = compressedData
             }
             
-            // Save metadata to Firestore
+            // Final size check
+            let imageSizeInMB = Double(data.count) / (1024 * 1024)
+            if imageSizeInMB > 0.9 { // Leave room for other fields
+                throw FirebaseError.imageTooLarge
+            }
+            
+            // Convert to Base64
+            let base64Image = data.base64EncodedString()
+            
+            // Create thumbnail (very compressed)
+            var base64Thumbnail: String?
+            if let thumbnailData = image.jpegData(compressionQuality: 0.2) {
+                base64Thumbnail = thumbnailData.base64EncodedString()
+            }
+            
+            // Create ImageModel with Base64 data
             let imageModel = ImageModel(
                 referenceName: referenceName,
-                imageURL: downloadURL.absoluteString,
-                thumbnailURL: thumbnailURL
+                imageData: base64Image,
+                thumbnailData: base64Thumbnail
             )
             
+            // Save to Firestore
             try await db.collection(ImageModel.collectionName).addDocument(from: imageModel)
             
             // Add to local array for immediate UI update
@@ -122,16 +128,47 @@ class FirebaseService: ObservableObject {
     func loadMoreImages() async {
         await fetchImages(refresh: false)
     }
+    
+    // MARK: - Helper Functions
+    private func resizeImageIfNeeded(_ image: UIImage, maxSize: CGFloat) -> UIImage {
+        let size = image.size
+        
+        // If image is already smaller than maxSize, return original
+        if size.width <= maxSize && size.height <= maxSize {
+            return image
+        }
+        
+        // Calculate new size maintaining aspect ratio
+        let aspectRatio = size.width / size.height
+        var newSize: CGSize
+        
+        if size.width > size.height {
+            newSize = CGSize(width: maxSize, height: maxSize / aspectRatio)
+        } else {
+            newSize = CGSize(width: maxSize * aspectRatio, height: maxSize)
+        }
+        
+        // Resize the image
+        UIGraphicsBeginImageContextWithOptions(newSize, false, 0.0)
+        image.draw(in: CGRect(origin: .zero, size: newSize))
+        let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+        UIGraphicsEndImageContext()
+        
+        return resizedImage ?? image
+    }
 }
 
 // MARK: - Firebase Errors
 enum FirebaseError: LocalizedError {
     case imageCompressionFailed
+    case imageTooLarge
     
     var errorDescription: String? {
         switch self {
         case .imageCompressionFailed:
             return "Failed to compress image"
+        case .imageTooLarge:
+            return "Image is still too large after compression. Please select a smaller image or reduce the image quality."
         }
     }
 }
