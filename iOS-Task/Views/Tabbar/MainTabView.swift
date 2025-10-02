@@ -80,7 +80,7 @@ struct MainTabView: View {
                 .fill(Color(.systemBackground))
                 .shadow(color: .black.opacity(0.3), radius: 2, x: 0, y: -1)
         )
-        .frame(height: 10)
+        .frame(height: 10).background(.white)
     }
 }
 
