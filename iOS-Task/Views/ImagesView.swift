@@ -23,7 +23,7 @@ struct ImagesView: View {
                 // Images Grid - Only show when there are images
                 if !firebaseService.images.isEmpty {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 16) {
+                        LazyVGrid(columns: columns, spacing: 45) {
                             ForEach(firebaseService.images) { image in
                                 ImageGridItem(imageModel: image)
                                     .onAppear {
@@ -118,7 +118,7 @@ struct ImageGridItem: View {
                         Image(uiImage: displayImage)
                             .resizable()
                             .aspectRatio(contentMode: .fill)
-                            .frame(width: geometry.size.width, height: geometry.size.width)
+                            .frame(width: geometry.size.width, height: 160)
                             .clipped()
                             .cornerRadius(8)
                     } else {
