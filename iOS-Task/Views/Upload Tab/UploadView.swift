@@ -6,21 +6,14 @@
 //
 
 import SwiftUI
-import PhotosUI
 
 struct UploadView: View {
-    @ObservedObject private var firebaseService = FirebaseService.shared
-    @State private var selectedImage: UIImage?
-    @State private var referenceName: String = ""
-    @State private var showingImagePicker = false
-    @State private var showingImagePreview = false
-    @State private var showingAlert = false
-    @State private var alertMessage = ""
+    @StateObject private var viewModel = UploadViewModel()
     
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
-                if showingImagePreview && selectedImage != nil {
+                if viewModel.showingImagePreview && viewModel.selectedImage != nil {
                     imagePreviewView
                 } else {
                     uploadOptionsView
@@ -35,19 +28,17 @@ struct UploadView: View {
             }
             .navigationBarHidden(true)
         }
-        .sheet(isPresented: $showingImagePicker) {
-            ImagePicker(selectedImage: $selectedImage) {
-                showingImagePreview = true
+        .sheet(isPresented: $viewModel.showingImagePicker) {
+            ImagePicker(selectedImage: $viewModel.selectedImage) {
+                viewModel.onImageSelected()
             }
         }
-        .alert("Upload Status", isPresented: $showingAlert) {
+        .alert("Upload Status", isPresented: $viewModel.showingAlert) {
             Button("OK") {
-                if alertMessage.contains("successfully") {
-                    resetUploadState()
-                }
+                viewModel.handleAlertDismissal()
             }
         } message: {
-            Text(alertMessage)
+            Text(viewModel.alertMessage)
         }
     }
     
@@ -59,7 +50,7 @@ struct UploadView: View {
             VStack(spacing: 30) {
                 // Browser Gallery Button
                 Button(action: {
-                    showingImagePicker = true
+                    viewModel.selectImageFromGallery()
                 }) {
                     VStack(spacing: 15) {
                         RoundedRectangle(cornerRadius: 12)
@@ -130,7 +121,7 @@ struct UploadView: View {
     private var imagePreviewView: some View {
         VStack(spacing: 0) {
             // Image Preview Area - Dynamic size from top to text field
-            if let selectedImage = selectedImage {
+            if let selectedImage = viewModel.selectedImage {
                 GeometryReader { geometry in
                     Image(uiImage: selectedImage)
                         .resizable()
@@ -140,9 +131,7 @@ struct UploadView: View {
                         .overlay(
                             // Close Button with absolute positioning - Always visible
                             Button(action: {
-                                showingImagePreview = false
-                                self.selectedImage = nil
-                                referenceName = ""
+                                viewModel.cancelImageSelection()
                             }) {
                                 Image(systemName: "xmark")
                                     .font(.system(size: 12, weight: .medium))
@@ -162,7 +151,7 @@ struct UploadView: View {
             
             // Reference Name Input and Submit - Fixed at bottom with 20px spacing
             VStack(spacing: 20) {
-                TextField("Reference Name", text: $referenceName)
+                TextField("Reference Name", text: $viewModel.referenceName)
                     .padding(.horizontal, 16)
                     .frame(height: 42)
                     .background(Color(.systemBackground))
@@ -174,7 +163,7 @@ struct UploadView: View {
                     .padding(.horizontal, 30)
                 
                 Button(action: {
-                    submitImage()
+                    viewModel.submitImage()
                 }) {
                     Text("Submit")
                         .font(.system(size: 16, weight: .semibold))
@@ -183,13 +172,13 @@ struct UploadView: View {
                         .padding(.horizontal, 30)
                         .background(
                             RoundedRectangle(cornerRadius: 8)
-                                .fill(referenceName.isEmpty ? Color.gray : Color.green)
+                                .fill(viewModel.submitButtonColor)
                         )
                 }
-                .disabled(referenceName.isEmpty || firebaseService.isLoading)
+                .disabled(viewModel.isSubmitDisabled)
                 .padding(.horizontal, 20)
                 
-                if firebaseService.isLoading {
+                if viewModel.isLoading {
                     ProgressView("Uploading...")
                         .padding(.top, 10)
                 }
@@ -200,73 +189,6 @@ struct UploadView: View {
         }
     }
     
-    // MARK: - Helper Methods
-    private func submitImage() {
-        guard let image = selectedImage, !referenceName.isEmpty else { return }
-        
-        Task {
-            do {
-                try await firebaseService.uploadImage(image, referenceName: referenceName)
-                alertMessage = "Image uploaded successfully!"
-                showingAlert = true
-            } catch {
-                alertMessage = "Upload failed: \(error.localizedDescription)"
-                showingAlert = true
-            }
-        }
-    }
-    
-    private func resetUploadState() {
-        selectedImage = nil
-        referenceName = ""
-        showingImagePreview = false
-    }
-}
-
-// MARK: - Image Picker
-struct ImagePicker: UIViewControllerRepresentable {
-    @Binding var selectedImage: UIImage?
-    let onImageSelected: () -> Void
-    @Environment(\.presentationMode) var presentationMode
-    
-    func makeUIViewController(context: Context) -> PHPickerViewController {
-        var config = PHPickerConfiguration()
-        config.filter = .images
-        config.selectionLimit = 1
-        
-        let picker = PHPickerViewController(configuration: config)
-        picker.delegate = context.coordinator
-        return picker
-    }
-    
-    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-    
-    class Coordinator: NSObject, PHPickerViewControllerDelegate {
-        let parent: ImagePicker
-        
-        init(_ parent: ImagePicker) {
-            self.parent = parent
-        }
-        
-        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
-            parent.presentationMode.wrappedValue.dismiss()
-            
-            guard let provider = results.first?.itemProvider else { return }
-            
-            if provider.canLoadObject(ofClass: UIImage.self) {
-                provider.loadObject(ofClass: UIImage.self) { image, _ in
-                    DispatchQueue.main.async {
-                        self.parent.selectedImage = image as? UIImage
-                        self.parent.onImageSelected()
-                    }
-                }
-            }
-        }
-    }
 }
 
 #Preview {

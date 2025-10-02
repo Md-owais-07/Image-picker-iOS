@@ -8,29 +8,23 @@
 import SwiftUI
 
 struct ImagesView: View {
-    @ObservedObject private var firebaseService = FirebaseService.shared
-    @State private var showingRefreshAlert = false
-    
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
+    @StateObject private var viewModel = ImagesViewModel()
     
     var body: some View {
         NavigationView {
             ZStack {
             VStack(spacing: 0) {
                 // Images Grid - Only show when there are images
-                if !firebaseService.images.isEmpty {
+                if viewModel.hasImages {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 45) {
-                            ForEach(firebaseService.images) { image in
+                        LazyVGrid(columns: viewModel.columns, spacing: 45) {
+                            ForEach(viewModel.images) { image in
                                 ImageGridItem(imageModel: image)
                                     .onAppear {
                                         // Load more images when reaching the end
-                                        if image.id == firebaseService.images.last?.id {
+                                        if viewModel.shouldLoadMoreImages(for: image) {
                                             Task {
-                                                await firebaseService.loadMoreImages()
+                                                await viewModel.loadMoreImages()
                                             }
                                         }
                                     }
@@ -40,19 +34,19 @@ struct ImagesView: View {
                         .padding(.top, 16)
                         
                         // Loading indicator for pagination
-                        if firebaseService.isLoading && !firebaseService.images.isEmpty {
+                        if viewModel.showPaginationLoading {
                             ProgressView()
                                 .padding(.vertical, 20)
                         }
                     }
                     .refreshable {
-                        await firebaseService.fetchImages(refresh: true)
+                        await viewModel.refreshImages()
                     }
                 }
             }
             
             // Centered Empty State
-            if firebaseService.images.isEmpty && !firebaseService.isLoading {
+            if viewModel.showEmptyState {
                 VStack(spacing: 16) {
                     Image(systemName: "photo.on.rectangle.angled")
                         .font(.system(size: 60))
@@ -72,7 +66,7 @@ struct ImagesView: View {
             }
             
             // Centered Initial Loading
-            if firebaseService.images.isEmpty && firebaseService.isLoading {
+            if viewModel.showInitialLoading {
                 VStack(spacing: 16) {
                     ProgressView()
                         .scaleEffect(1.2)
@@ -89,74 +83,17 @@ struct ImagesView: View {
         }
         .task {
             // Only load images if not loaded before
-            await firebaseService.loadImagesIfNeeded()
+            await viewModel.loadImagesIfNeeded()
         }
-        .alert("Error", isPresented: .constant(firebaseService.errorMessage != nil)) {
+        .alert("Error", isPresented: .constant(viewModel.hasError)) {
             Button("OK") {
-                firebaseService.errorMessage = nil
+                viewModel.clearError()
             }
         } message: {
-            if let errorMessage = firebaseService.errorMessage {
+            if let errorMessage = viewModel.errorMessage {
                 Text(errorMessage)
             }
         }
-    }
-}
-
-
-// MARK: - Image Grid Item
-struct ImageGridItem: View {
-    let imageModel: ImageModel
-    @State private var displayImage: UIImage?
-    
-    var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 10) {
-                // Image - Dynamic width based on available space
-                Group {
-                    if let displayImage = displayImage {
-                        Image(uiImage: displayImage)
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: geometry.size.width, height: 160)
-                            .clipped()
-                            .cornerRadius(8)
-                    } else {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.gray.opacity(0.2))
-                            .frame(width: geometry.size.width, height: geometry.size.width)
-                            .overlay(
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            )
-                    }
-                }
-                
-                // Reference Name
-                Text(imageModel.referenceName)
-                    .font(.system(size: 12, weight: .regular))
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .frame(width: geometry.size.width)
-            }
-        }
-        .aspectRatio(1.2, contentMode: .fit)
-        .onAppear {
-            loadImageFromBase64()
-        }
-    }
-    
-    private func loadImageFromBase64() {
-        // Use thumbnail if available, otherwise use full image
-        let base64String = imageModel.thumbnailData ?? imageModel.imageData
-        
-        guard let imageData = Data(base64Encoded: base64String),
-              let uiImage = UIImage(data: imageData) else {
-            return
-        }
-        
-        displayImage = uiImage
     }
 }
 
