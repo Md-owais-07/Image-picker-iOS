@@ -32,6 +32,7 @@ struct ImagesView: View {
                         }
                         .padding(.horizontal, 12)
                         .padding(.top, 16)
+                        .padding(.bottom, 80)
                         
                         // Loading indicator for pagination
                         if viewModel.showPaginationLoading {
